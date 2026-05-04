@@ -58,11 +58,12 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
     const start = { x: 4, y: 2 }; // Start on a road intersection
     const end = { x: 1, y: 6 }; // Target a specific field section
 
-    let finalPath: GridPoint[] = [];
-    if (searchAlgo === 'BFS') finalPath = bfs(searchableGrid, start, end);
-    else if (searchAlgo === 'DFS') finalPath = dfs(searchableGrid, start, end);
-    else if (searchAlgo === 'Greedy') finalPath = greedyBestFirstSearch(searchableGrid, start, end);
-    else finalPath = aStar(searchableGrid, start, end);
+    const finalPath = (() => {
+      if (searchAlgo === 'BFS') return bfs(searchableGrid, start, end);
+      if (searchAlgo === 'DFS') return dfs(searchableGrid, start, end);
+      if (searchAlgo === 'Greedy') return greedyBestFirstSearch(searchableGrid, start, end);
+      return aStar(searchableGrid, start, end);
+    })();
 
     setPath(finalPath);
   };
