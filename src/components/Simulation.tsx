@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TestTube, PlayCircle, BarChart2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { hillClimbing, geneticAlgorithm } from '../lib/algorithms';
 
 const baseGrowthData = [
   { day: 0, baseline: 0, optimized: 0 },
@@ -18,7 +19,18 @@ export default function Simulation({ t }: { t: Record<string, string> }) {
 
   // Dynamic calculations
   const multiplier = crop === 'Corn' ? 1 : crop === 'Soybeans' ? 0.8 : 1.2;
-  const optMultiplier = strategy === 'AI' ? 1.25 : strategy === 'Fixed' ? 1.05 : 0.9;
+  // Using Hill Climbing to optimize specific growth parameters
+  const hillClimbResult = hillClimbing((x) => -Math.pow(x - 1.2, 2) + 1.5, 1.0);
+  const hcBonus = strategy === 'AI' ? hillClimbResult.value : 1.0;
+
+  // Using Genetic Algorithm to find the best seed/water/fertilizer mix factor
+  const gaResult = geneticAlgorithm(20, 3, (genes) => {
+    const [seed, water, fertilizer] = genes;
+    return seed * 0.4 + water * 0.3 + fertilizer * 0.3; // Simple fitness function
+  });
+  const gaBonus = strategy === 'AI' ? gaResult.score * 0.5 + 1 : 1.0;
+
+  const optMultiplier = strategy === 'AI' ? (1.1 * hcBonus * gaBonus) : strategy === 'Fixed' ? 1.05 : 0.9;
   
   const growthData = baseGrowthData.map(d => ({
     day: d.day,
@@ -26,8 +38,8 @@ export default function Simulation({ t }: { t: Record<string, string> }) {
     optimized: Math.min(100, Math.round(d.optimized * multiplier * optMultiplier)),
   }));
 
-  const estYieldBonus = strategy === 'AI' ? (14.5 * multiplier).toFixed(1) : (4.2 * multiplier).toFixed(1);
-  const waterSaved = strategy === 'AI' ? (2.1 * multiplier).toFixed(1) : (0.5 * multiplier).toFixed(1);
+  const estYieldBonus = strategy === 'AI' ? (14.5 * multiplier * hcBonus).toFixed(1) : (4.2 * multiplier).toFixed(1);
+  const waterSaved = strategy === 'AI' ? (2.1 * multiplier * gaBonus).toFixed(1) : (0.5 * multiplier).toFixed(1);
 
   const handleRun = () => {
     setRunning(true);
@@ -103,7 +115,7 @@ export default function Simulation({ t }: { t: Record<string, string> }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="day" stroke="var(--text-muted)" tick={{fill: 'var(--text-muted)'}} />
                   <YAxis stroke="var(--text-muted)" tick={{fill: 'var(--text-muted)'}} />
-                  <Tooltip contentStyle={{ backgroundColor: 'var(--sidebar-bg)', borderColor: 'var(--border)', borderRadius: '12px' }} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--sidebar-bg)', borderColor: 'var(--border)', borderRadius: '12px', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} />
                   <Area type="monotone" dataKey="baseline" stroke="var(--text-muted)" strokeWidth={2} fillOpacity={1} fill="url(#colorBase)" name="Standard Timeline" />
                   <Area type="monotone" dataKey="optimized" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorOpt)" name="Optimized (AI)" />
                 </AreaChart>

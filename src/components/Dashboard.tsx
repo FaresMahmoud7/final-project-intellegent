@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { 
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { Leaf, Droplet, Wind, AlertTriangle, CheckCircle2, TrendingUp, Loader2, X, FileText, ListChecks } from 'lucide-react';
+import { Leaf, Droplet, Wind, AlertTriangle, CheckCircle2, TrendingUp, Loader2, X, FileText, ListChecks, Zap, Package, Database } from 'lucide-react';
+import { activitySelection, jobSequencing, knapsackGreedy, huffmanCoding } from '../lib/algorithms';
 
 const yieldData = [
   { month: 'Jan', projected: 4000, actual: 4100 },
@@ -42,6 +43,31 @@ export default function Dashboard({ t }: { t: Record<string, string> }) {
     { id: 2, type: 'critical', message: 'Low moisture level in Sector 2. Irrigation triggered.', time: '5 hours ago' },
     { id: 3, type: 'success', message: 'Optimal harvest window for Soybeans in 3 days.', time: '1 day ago' },
   ];
+
+  // Greedy Algorithms Calculations
+  const tasks = [
+    { id: 'Spray', start: 8, end: 10 },
+    { id: 'Irrigate', start: 9, end: 11 },
+    { id: 'Drone Scan', start: 10, end: 12 },
+    { id: 'Harvest', start: 13, end: 15 },
+  ];
+  const optimalTasks = activitySelection(tasks);
+
+  const jobs = [
+    { id: 'Repair', deadline: 2, profit: 100 },
+    { id: 'Seed', deadline: 1, profit: 500 },
+    { id: 'Fertilize', deadline: 2, profit: 300 },
+  ];
+  const prioritizedJobs = jobSequencing(jobs);
+
+  const resources = [
+    { name: 'Seed A', value: 500, weight: 10 },
+    { name: 'Seed B', value: 400, weight: 5 },
+    { name: 'Fertilizer', value: 300, weight: 8 },
+  ];
+  const resourceAllocation = knapsackGreedy(resources, 15);
+
+  const dataStatus = huffmanCoding("Smarter Farming Through AI Integration");
 
   return (
     <div className="animate-fade-in flex flex-col gap-6 relative">
@@ -163,7 +189,7 @@ export default function Dashboard({ t }: { t: Record<string, string> }) {
                 <XAxis dataKey="month" stroke="var(--text-muted)" tick={{fill: 'var(--text-muted)'}} axisLine={false} tickLine={false} />
                 <YAxis stroke="var(--text-muted)" tick={{fill: 'var(--text-muted)'}} axisLine={false} tickLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--sidebar-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text-main)' }}
+                  contentStyle={{ backgroundColor: 'var(--sidebar-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text-main)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
                   itemStyle={{ color: 'var(--text-main)' }}
                 />
                 <Area type="monotone" dataKey="actual" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" />
@@ -225,7 +251,7 @@ export default function Dashboard({ t }: { t: Record<string, string> }) {
                 <XAxis dataKey="day" stroke="var(--text-muted)" tick={{fill: 'var(--text-muted)'}} axisLine={false} tickLine={false} />
                 <YAxis stroke="var(--text-muted)" tick={{fill: 'var(--text-muted)'}} axisLine={false} tickLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--sidebar-bg)', border: '1px solid var(--border)', borderRadius: '12px' }}
+                  contentStyle={{ backgroundColor: 'var(--sidebar-bg)', border: '1px solid var(--border)', borderRadius: '12px', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
                 />
                 <Line type="monotone" dataKey="moisture" name="Moisture (%)" stroke="var(--accent)" strokeWidth={3} dot={{r: 4, fill: 'var(--bg-dark)'}} activeDot={{r: 6}} />
                 <Line type="monotone" dataKey="nitrogen" name="Nitrogen Level" stroke="var(--warning)" strokeWidth={3} dot={{r: 4, fill: 'var(--bg-dark)'}} />
@@ -259,7 +285,85 @@ export default function Dashboard({ t }: { t: Record<string, string> }) {
         </div>
       </div>
 
-      {/* Modals */}
+      {/* AI Strategy & Optimization (Greedy Algorithms) */}
+      <div className="grid grid-cols-3 gap-6">
+        <div className="glass-panel p-6 flex flex-col gap-4">
+          <h3 className="text-lg flex items-center gap-2 text-primary">
+            <Zap size={20}/> Smart Task Schedule
+          </h3>
+          <p className="text-xs text-muted">Optimized using Activity Selection & Job Sequencing</p>
+          <div className="flex flex-col gap-2">
+            {optimalTasks.map(task => (
+              <div key={task.id} className="p-3 bg-black/10 rounded-lg border border-primary/20 flex justify-between items-center">
+                <span className="text-sm font-medium">{task.id}</span>
+                <span className="badge badge-primary">{task.start}:00 - {task.end}:00</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-border">
+            <p className="text-xs text-muted mb-2">Priority Backlog:</p>
+            {prioritizedJobs.schedule.map(job => (
+              <div key={job.id} className="text-xs flex justify-between mb-1">
+                <span>{job.id}</span>
+                <span className="text-primary">+${job.profit}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="glass-panel p-6 flex flex-col gap-4">
+          <h3 className="text-lg flex items-center gap-2 text-accent">
+            <Package size={20}/> Resource Allocation
+          </h3>
+          <p className="text-xs text-muted">Optimized using Fractional Knapsack (Capacity: 15kg)</p>
+          <div className="flex flex-col gap-3">
+            {resourceAllocation.selected.map(item => (
+              <div key={item.name} className="flex flex-col gap-1">
+                <div className="flex justify-between text-sm">
+                  <span>{item.name}</span>
+                  <span className="text-accent">{Math.round(item.fraction * 100)}%</span>
+                </div>
+                <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-accent h-full progress-fill-dynamic" 
+                    ref={(el) => { if (el) el.style.setProperty('--width', `${item.fraction * 100}%`); }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+            <div className="mt-auto p-3 bg-accent/5 rounded-lg border border-accent/20">
+              <p className="text-xs text-muted">Estimated Total Value:</p>
+              <h4 className="text-xl font-bold text-accent">${Math.round(resourceAllocation.totalValue)}</h4>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-panel p-6 flex flex-col gap-4">
+          <h3 className="text-lg flex items-center gap-2 text-warning">
+            <Database size={20}/> Data Compression
+          </h3>
+          <p className="text-xs text-muted">Simulating Huffman Coding for Satellite Data</p>
+          <div className="flex flex-col gap-4 justify-center flex-1">
+            <div className="flex justify-around items-center">
+               <div className="text-center">
+                 <p className="text-xs text-muted mb-1">Original</p>
+                 <h4 className="text-lg font-bold">{dataStatus.originalSize} bits</h4>
+               </div>
+               <div className="w-8 h-px bg-border"></div>
+               <div className="text-center">
+                 <p className="text-xs text-muted mb-1">Compressed</p>
+                 <h4 className="text-lg font-bold text-warning">{dataStatus.compressedSize} bits</h4>
+               </div>
+            </div>
+            <div className="p-4 bg-warning/5 rounded-xl border border-warning/20 text-center">
+               <p className="text-xs text-muted mb-1">Compression Ratio</p>
+               <h3 className="text-2xl font-bold text-warning">
+                 {Math.round((1 - dataStatus.compressedSize / dataStatus.originalSize) * 100)}%
+               </h3>
+            </div>
+          </div>
+        </div>
+      </div>
       {isReportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="glass-panel p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">

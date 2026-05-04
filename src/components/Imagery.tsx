@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Crosshair, Layers, Download, CheckCircle2, Navigation, FileImage, Loader2, ThermometerSun, Leaf, AlertTriangle } from 'lucide-react';
+import { Crosshair, Layers, Download, CheckCircle2, Navigation, FileImage, Loader2, ThermometerSun, Leaf, AlertTriangle, Cpu } from 'lucide-react';
+import { bfs, dfs, aStar, type GridPoint } from '../lib/algorithms';
 
 export default function Imagery({ t }: { t: Record<string, string> }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +17,54 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
     setTimeout(() => {
       setIsModalOpen(false);
     }, 2000);
+  };
+
+  const [searchAlgo, setSearchAlgo] = useState<'BFS' | 'DFS' | 'A*'>('A*');
+  const [path, setPath] = useState<GridPoint[]>([]);
+  const [irrigationGrid, setIrrigationGrid] = useState<number[][]>([]);
+
+  // Initialize a static field design with roads
+  // 0: Road (Passable), 1: Obstacle/Fence, 2: Field (Target)
+  const initGrid = () => {
+    const grid = Array(10).fill(0).map(() => Array(10).fill(0));
+    
+    // Create roads (horizontal and vertical lines)
+    // Vertical roads at 2, 5, 8
+    // Horizontal roads at 4, 9
+    
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 10; c++) {
+        const isRoad = (c === 2 || c === 5 || c === 8) || (r === 4 || r === 9);
+        grid[r][c] = isRoad ? 0 : 2; // Fields are 2, Roads are 0
+      }
+    }
+    
+    // Add some obstacles (fences/buildings)
+    grid[0][0] = 1; grid[0][1] = 1;
+    grid[7][6] = 1; grid[7][7] = 1;
+    
+    setIrrigationGrid(grid);
+  };
+
+  const runPathfinding = () => {
+    if (irrigationGrid.length === 0) initGrid();
+    
+    // Treat everything except obstacles (1) as passable (0) for the search algo
+    const searchableGrid = (irrigationGrid.length > 0 ? irrigationGrid : Array(10).fill(0).map((_, r) => Array(10).fill(0).map((_, c) => {
+        const isRoad = (c === 2 || c === 5 || c === 8) || (r === 4 || r === 9);
+        return isRoad ? 0 : ( (r===0&&c===0)||(r===7&&c===6) ? 1 : 0);
+    }))).map(row => row.map(cell => cell === 1 ? 1 : 0));
+
+    const start = { x: 4, y: 2 }; // Start on a road intersection
+    const end = { x: 1, y: 6 }; // Target a specific field section
+
+    const finalPath = searchAlgo === 'BFS' 
+      ? bfs(searchableGrid, start, end) 
+      : searchAlgo === 'DFS' 
+        ? dfs(searchableGrid, start, end) 
+        : aStar(searchableGrid, start, end);
+
+    setPath(finalPath);
   };
 
   return (
@@ -67,7 +116,7 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
           </div>
           
           <div className="map-container flex-1 border border-border/50 rounded-2xl relative overflow-hidden bg-black/20">
-            {/* Dynamic Background based on layer */}
+            {/* Map Background Layer */}
             <div className={`absolute inset-0 transition-opacity duration-700 ${activeLayer === 'ndvi' ? 'opacity-100' : 'opacity-0'}`}>
                <div className="absolute inset-0 map-bg-primary"></div>
                <div className="absolute inset-0 map-bg-warning clip-diamond opacity-60"></div>
@@ -79,6 +128,23 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
             
             <div className={`absolute inset-0 transition-opacity duration-700 ${activeLayer === 'rgb' ? 'opacity-100' : 'opacity-0'}`}>
                <div className="absolute inset-0 bg-[#3f4e2e]/30"></div>
+            </div>
+
+            {/* Field & Road Design Layer */}
+            <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 opacity-30">
+              {Array(100).fill(0).map((_, i) => {
+                const r = Math.floor(i / 10);
+                const c = i % 10;
+                const isRoad = (c === 2 || c === 5 || c === 8) || (r === 4 || r === 9);
+                const isObstacle = (r === 0 && c === 0) || (r === 0 && c === 1) || (r === 7 && c === 6) || (r === 7 && c === 7);
+                
+                return (
+                  <div 
+                    key={i} 
+                    className={`border border-white/5 ${isRoad ? 'bg-slate-600' : isObstacle ? 'bg-red-900/50' : 'bg-green-900/20'}`}
+                  ></div>
+                );
+              })}
             </div>
 
             {/* Grid Overlay */}
@@ -116,11 +182,51 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm bg-warning/60"></span> Monitor</div>
                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm bg-danger/60"></span> Risk</div>
             </div>
+
+            {/* Pathfinding Overlay */}
+            {path.length > 0 && (
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
+                {path.map((p, i) => i < path.length - 1 && (
+                  <line 
+                    key={i}
+                    x1={`${p.y * 10 + 5}%`} y1={`${p.x * 10 + 5}%`}
+                    x2={`${path[i+1].y * 10 + 5}%`} y2={`${path[i+1].x * 10 + 5}%`}
+                    stroke={searchAlgo === 'A*' ? 'var(--primary)' : searchAlgo === 'BFS' ? 'var(--accent)' : 'var(--warning)'}
+                    strokeWidth="3"
+                    strokeDasharray="5,5"
+                    className="animate-pulse"
+                  />
+                ))}
+                <circle cx={`${path[0].y * 10 + 5}%`} cy={`${path[0].x * 10 + 5}%`} r="6" fill="var(--primary)" />
+                <circle cx={`${path[path.length-1].y * 10 + 5}%`} cy={`${path[path.length-1].x * 10 + 5}%`} r="8" fill="var(--danger)" />
+              </svg>
+            )}
           </div>
         </div>
 
         {/* Sidebar: Recent Scans */}
         <div className="glass-panel p-6 col-span-4 flex flex-col max-h-full overflow-hidden">
+          <div className="mb-8">
+            <h3 className="text-lg mb-4 flex items-center gap-2">
+               <Cpu size={20} className="text-primary"/> Path Optimization
+            </h3>
+            <div className="flex flex-col gap-3">
+              <select 
+                title="Search Algorithm"
+                className="form-input bg-black/20" 
+                value={searchAlgo} 
+                onChange={(e) => setSearchAlgo(e.target.value as 'BFS' | 'DFS' | 'A*')}
+              >
+                <option value="BFS">BFS (Shortest Path)</option>
+                <option value="DFS">DFS (Depth Search)</option>
+                <option value="A*">A* (Heuristic Best)</option>
+              </select>
+              <button onClick={runPathfinding} className="button justify-center py-2">
+                Run {searchAlgo} Analysis
+              </button>
+            </div>
+          </div>
+
           <h3 className="text-lg mb-6 flex items-center gap-2">
              <Layers size={20} className="text-primary"/> {t.recentScans}
           </h3>

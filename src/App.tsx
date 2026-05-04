@@ -21,12 +21,15 @@ import { translations } from './i18n';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [language, setLanguage] = useState<'en' | 'ar'>('en');
+  const [language, setLanguage] = useState<'en' | 'ar'>(() => {
+    return (localStorage.getItem('agrisense-lang') as 'en' | 'ar') || 'en';
+  });
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   const t = translations[language];
 
   useEffect(() => {
+    localStorage.setItem('agrisense-lang', language);
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
 
