@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Crosshair, Layers, Download, CheckCircle2, Navigation, FileImage, Loader2, ThermometerSun, Leaf, AlertTriangle, Cpu } from 'lucide-react';
-import { bfs, dfs, aStar, type GridPoint } from '../lib/algorithms';
+import { bfs, dfs, aStar, greedyBestFirstSearch, type GridPoint } from '../lib/algorithms';
 
 export default function Imagery({ t }: { t: Record<string, string> }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,7 +19,7 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
     }, 2000);
   };
 
-  const [searchAlgo, setSearchAlgo] = useState<'BFS' | 'DFS' | 'A*'>('A*');
+  const [searchAlgo, setSearchAlgo] = useState<'BFS' | 'DFS' | 'A*' | 'Greedy'>('A*');
   const [path, setPath] = useState<GridPoint[]>([]);
   const [irrigationGrid, setIrrigationGrid] = useState<number[][]>([]);
 
@@ -58,11 +58,11 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
     const start = { x: 4, y: 2 }; // Start on a road intersection
     const end = { x: 1, y: 6 }; // Target a specific field section
 
-    const finalPath = searchAlgo === 'BFS' 
-      ? bfs(searchableGrid, start, end) 
-      : searchAlgo === 'DFS' 
-        ? dfs(searchableGrid, start, end) 
-        : aStar(searchableGrid, start, end);
+    let finalPath: GridPoint[] = [];
+    if (searchAlgo === 'BFS') finalPath = bfs(searchableGrid, start, end);
+    else if (searchAlgo === 'DFS') finalPath = dfs(searchableGrid, start, end);
+    else if (searchAlgo === 'Greedy') finalPath = greedyBestFirstSearch(searchableGrid, start, end);
+    else finalPath = aStar(searchableGrid, start, end);
 
     setPath(finalPath);
   };
@@ -191,7 +191,7 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
                     key={i}
                     x1={`${p.y * 10 + 5}%`} y1={`${p.x * 10 + 5}%`}
                     x2={`${path[i+1].y * 10 + 5}%`} y2={`${path[i+1].x * 10 + 5}%`}
-                    stroke={searchAlgo === 'A*' ? 'var(--primary)' : searchAlgo === 'BFS' ? 'var(--accent)' : 'var(--warning)'}
+                    stroke={searchAlgo === 'A*' ? 'var(--primary)' : searchAlgo === 'Greedy' ? 'var(--warning)' : searchAlgo === 'BFS' ? 'var(--accent)' : 'var(--danger)'}
                     strokeWidth="3"
                     strokeDasharray="5,5"
                     className="animate-pulse"
@@ -219,7 +219,8 @@ export default function Imagery({ t }: { t: Record<string, string> }) {
               >
                 <option value="BFS">BFS (Shortest Path)</option>
                 <option value="DFS">DFS (Depth Search)</option>
-                <option value="A*">A* (Heuristic Best)</option>
+                <option value="A*">A* (Weighted Path)</option>
+                <option value="Greedy">Greedy Best-First</option>
               </select>
               <button onClick={runPathfinding} className="button justify-center py-2">
                 Run {searchAlgo} Analysis

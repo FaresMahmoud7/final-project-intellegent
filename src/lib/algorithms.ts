@@ -79,7 +79,8 @@ export function dfs(grid: number[][], start: GridPoint, end: GridPoint): GridPoi
 
 /**
  * A* Search Algorithm
- * Uses heuristics to find the shortest path efficiently
+ * Uses heuristics to find the shortest path efficiently.
+ * Supports weighted grids where grid value represents additional cost.
  */
 export function aStar(grid: number[][], start: GridPoint, end: GridPoint): GridPoint[] {
   const rows = grid.length;
@@ -96,11 +97,10 @@ export function aStar(grid: number[][], start: GridPoint, end: GridPoint): GridP
   fScore.set(`${start.x},${start.y}`, heuristic(start, end));
 
   while (openSet.length > 0) {
-    // Get node with lowest fScore
     let current = openSet[0];
     let currentIndex = 0;
     for (let i = 1; i < openSet.length; i++) {
-      if ((fScore.get(`${openSet[i].x},${openSet[i].y}`) || Infinity) < (fScore.get(`${current.x},${current.y}`) || Infinity)) {
+      if ((fScore.get(`${openSet[i].x},${openSet[i].y}`) ?? Infinity) < (fScore.get(`${current.x},${current.y}`) ?? Infinity)) {
         current = openSet[i];
         currentIndex = i;
       }
@@ -124,9 +124,12 @@ export function aStar(grid: number[][], start: GridPoint, end: GridPoint): GridP
       const neighbor = { x: current.x + dir.x, y: current.y + dir.y };
       const nKey = `${neighbor.x},${neighbor.y}`;
 
-      if (neighbor.x >= 0 && neighbor.x < rows && neighbor.y >= 0 && neighbor.y < cols && grid[neighbor.x][neighbor.y] === 0) {
-        const tentativeGScore = (gScore.get(`${current.x},${current.y}`) || 0) + 1;
-        if (tentativeGScore < (gScore.get(nKey) || Infinity)) {
+      if (neighbor.x >= 0 && neighbor.x < rows && neighbor.y >= 0 && neighbor.y < cols && grid[neighbor.x][neighbor.y] !== 1) {
+        // Cost is 1 + the value in the grid (e.g., 0 for road, higher for rough field)
+        const weight = grid[neighbor.x][neighbor.y] || 0;
+        const tentativeGScore = (gScore.get(`${current.x},${current.y}`) || 0) + 1 + weight;
+        
+        if (tentativeGScore < (gScore.get(nKey) ?? Infinity)) {
           cameFrom.set(nKey, current);
           gScore.set(nKey, tentativeGScore);
           fScore.set(nKey, tentativeGScore + heuristic(neighbor, end));
@@ -134,6 +137,63 @@ export function aStar(grid: number[][], start: GridPoint, end: GridPoint): GridP
             openSet.push(neighbor);
           }
         }
+      }
+    }
+  }
+  return [];
+}
+
+/**
+ * Greedy Best-First Search
+ * Purely heuristic-driven search, faster but not always shortest
+ */
+export function greedyBestFirstSearch(grid: number[][], start: GridPoint, end: GridPoint): GridPoint[] {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const heuristic = (a: GridPoint, b: GridPoint) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+  
+  const openSet: GridPoint[] = [start];
+  const cameFrom = new Map<string, GridPoint>();
+  const visited = new Set<string>();
+
+  while (openSet.length > 0) {
+    let current = openSet[0];
+    let currentIndex = 0;
+    for (let i = 1; i < openSet.length; i++) {
+      if (heuristic(openSet[i], end) < heuristic(current, end)) {
+        current = openSet[i];
+        currentIndex = i;
+      }
+    }
+
+    if (current.x === end.x && current.y === end.y) {
+      const path = [current];
+      let currKey = `${current.x},${current.y}`;
+      while (cameFrom.has(currKey)) {
+        current = cameFrom.get(currKey)!;
+        path.unshift(current);
+        currKey = `${current.x},${current.y}`;
+      }
+      return path;
+    }
+
+    openSet.splice(currentIndex, 1);
+    visited.add(`${current.x},${current.y}`);
+
+    const directions = [{x: 0, y: 1}, {x: 1, y: 0}, {x: 0, y: -1}, {x: -1, y: 0}];
+    for (const dir of directions) {
+      const neighbor = { x: current.x + dir.x, y: current.y + dir.y };
+      const nKey = `${neighbor.x},${neighbor.y}`;
+
+      if (
+        neighbor.x >= 0 && neighbor.x < rows && 
+        neighbor.y >= 0 && neighbor.y < cols && 
+        grid[neighbor.x][neighbor.y] !== 1 && 
+        !visited.has(nKey) &&
+        !openSet.some(p => p.x === neighbor.x && p.y === neighbor.y)
+      ) {
+        cameFrom.set(nKey, current);
+        openSet.push(neighbor);
       }
     }
   }
